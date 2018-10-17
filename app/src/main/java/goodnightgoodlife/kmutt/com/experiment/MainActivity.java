@@ -75,17 +75,22 @@ public class MainActivity extends AppCompatActivity {
     private Button refreshButton;
     private Button connectButton;
     private Button database;
+    private Button relaxButton;
+    private Button unrelaxButton;
     private TextView theta_1;
     private TextView theta_2;
     private TextView theta_3;
     private TextView theta_4;
     private TextView collection;
 
+    // Database variables
     public FirebaseFirestore db;
 
     // Temp variable
     private String collectionName;
-    private Map<String, Object> thetaMap = new HashMap<>();
+
+    private String state;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -128,6 +133,20 @@ public class MainActivity extends AppCompatActivity {
         }
 
         handler.post(tickUi);
+
+        relaxButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                state = "relax";
+            }
+        });
+
+        unrelaxButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                state = "unrelax";
+            }
+        });
 
         database.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -206,30 +225,31 @@ public class MainActivity extends AppCompatActivity {
             if (thetaStale) {
                 updateAlpha();
             }
-            handler.postDelayed(tickUi, 1000 / 60);
+            handler.postDelayed(tickUi, 5000 / 60);
         }
     };
 
     private void updateAlpha(){
+        Map<String, Object> thetaMap = new HashMap<>();
         if(!Double.isNaN(thetaBuffer[0])) {
             theta_1.setText("" + thetaBuffer[0]);
-            thetaMap.put("theta",thetaBuffer[0]);
+            thetaMap.put("sensor_0", thetaBuffer[0]);
         }
         if(!Double.isNaN(thetaBuffer[1])) {
             theta_2.setText("" + thetaBuffer[1]);
-            thetaMap.put("theta", thetaBuffer[1]);
+            thetaMap.put("sensor_1", thetaBuffer[1]);
         }
         if(!Double.isNaN(thetaBuffer[2])) {
             theta_3.setText("" + thetaBuffer[2]);
-            thetaMap.put("theta", thetaBuffer[2]);
+            thetaMap.put("sensor_2", thetaBuffer[2]);
         }
         if(!Double.isNaN(thetaBuffer[3])) {
             theta_4.setText("" + thetaBuffer[3]);
-            thetaMap.put("theta", thetaBuffer[3]);
+            thetaMap.put("sensor_3", thetaBuffer[3]);
         }
-        if((!collectionName.matches("") || collectionName != null) || (!Double.isNaN(thetaBuffer[0]) &&
-                !Double.isNaN(thetaBuffer[1]) && !Double.isNaN(thetaBuffer[2]) && !Double.isNaN(thetaBuffer[3])) ){
-            streaming(collectionName, db);
+        if((!collectionName.matches("") || collectionName != null) && !thetaMap.isEmpty() /*|| (!Double.isNaN(thetaBuffer[0]) &&
+                !Double.isNaN(thetaBuffer[1]) && !Double.isNaN(thetaBuffer[2]) && !Double.isNaN(thetaBuffer[3]))*/ ){
+            streaming(collectionName, db, state, thetaMap);
         }
     }
 
@@ -245,10 +265,18 @@ public class MainActivity extends AppCompatActivity {
         theta_4 = (TextView) findViewById(R.id.theta_4);
         collection = (TextView) findViewById(R.id.collection);
         database = (Button) findViewById(R.id.database);
+        relaxButton = (Button) findViewById(R.id.relaxButton);
+        unrelaxButton = (Button) findViewById(R.id.unrelaxButton);
     }
 
-    private void streaming(String colName, FirebaseFirestore db){
-        db.collection(colName).document("data").set(thetaMap);
+    private void streaming(String colName, FirebaseFirestore db, String state, Map<String, Object> map){
+        if(state.equals("relax")) {
+            db.collection(colName).document("relax").set(map);
+        }else if(state.equals("unrelax")){
+            db.collection(colName).document("unrelax").set(map);
+        }else{
+            db.collection(colName).document("unrelax").set(map);
+        }
     }
 
     private void getEegChannelValues(double[] buffer, MuseDataPacket p) {
@@ -269,14 +297,17 @@ public class MainActivity extends AppCompatActivity {
                 getEegChannelValues(eegBuffer,p);
                 eegStale = true;
                 break;
-            case ALPHA_RELATIVE:
+            case THETA_ABSOLUTE:
                 assert(thetaBuffer.length >= n);
                 getEegChannelValues(thetaBuffer,p);
                 thetaStale = true;
                 break;
             case BATTERY:
+                break;
             case DRL_REF:
+                break;
             case QUANTIZATION:
+                break;
             default:
                 break;
         }
