@@ -88,8 +88,9 @@ public class MainActivity extends AppCompatActivity {
 
     // Temp variable
     private String collectionName;
-
     private String state;
+    private Map<String, Object> thetaMap = new HashMap<>();
+    private int iTemp = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -98,6 +99,9 @@ public class MainActivity extends AppCompatActivity {
 
         //Firebase Firestore instance
         db = FirebaseFirestore.getInstance();
+
+        state = "";
+        collectionName = "anonymous";
 
         // Come before any other api call
         manager = MuseManagerAndroid.getInstance();
@@ -193,7 +197,7 @@ public class MainActivity extends AppCompatActivity {
                     muse.unregisterAllListeners();
                     muse.registerConnectionListener(connectionListener);
                     muse.registerDataListener(dataListener, MuseDataPacketType.EEG);
-                    muse.registerDataListener(dataListener, MuseDataPacketType.ALPHA_RELATIVE);
+                    muse.registerDataListener(dataListener, MuseDataPacketType.THETA_ABSOLUTE);
                     muse.registerDataListener(dataListener, MuseDataPacketType.ACCELEROMETER);
                     muse.registerDataListener(dataListener, MuseDataPacketType.BATTERY);
                     muse.registerDataListener(dataListener, MuseDataPacketType.DRL_REF);
@@ -219,38 +223,46 @@ public class MainActivity extends AppCompatActivity {
     private final Runnable tickUi = new Runnable() {
         @Override
         public void run() {
+            Log.e(TAG, "init handler");
+            updateAlpha();
             if (eegStale) {
                 //updateEeg();
             }
             if (thetaStale) {
-                updateAlpha();
+                //updateAlpha();
             }
-            handler.postDelayed(tickUi, 5000 / 60);
+            handler.postDelayed(tickUi, 50000 / 60);
+            Log.e(TAG, "handler end");
         }
     };
 
     private void updateAlpha(){
-        Map<String, Object> thetaMap = new HashMap<>();
+
         if(!Double.isNaN(thetaBuffer[0])) {
+            Log.e(TAG, "theta_1 : " + thetaBuffer[0]);
             theta_1.setText("" + thetaBuffer[0]);
-            thetaMap.put("sensor_0", thetaBuffer[0]);
+            thetaMap.put("sensor_0_"+iTemp, thetaBuffer[0]);
         }
         if(!Double.isNaN(thetaBuffer[1])) {
+            Log.e(TAG, "theta_2 : " + thetaBuffer[1]);
             theta_2.setText("" + thetaBuffer[1]);
-            thetaMap.put("sensor_1", thetaBuffer[1]);
+            thetaMap.put("sensor_1_"+iTemp, thetaBuffer[1]);
         }
         if(!Double.isNaN(thetaBuffer[2])) {
+            Log.e(TAG, "theta_3 : " + thetaBuffer[2]);
             theta_3.setText("" + thetaBuffer[2]);
-            thetaMap.put("sensor_2", thetaBuffer[2]);
+            thetaMap.put("sensor_2_"+iTemp, thetaBuffer[2]);
         }
         if(!Double.isNaN(thetaBuffer[3])) {
+            Log.e(TAG, "theta_4 : " + thetaBuffer[3]);
             theta_4.setText("" + thetaBuffer[3]);
-            thetaMap.put("sensor_3", thetaBuffer[3]);
+            thetaMap.put("sensor_3_"+iTemp, thetaBuffer[3]);
         }
-        if((!collectionName.matches("") || collectionName != null) && !thetaMap.isEmpty() /*|| (!Double.isNaN(thetaBuffer[0]) &&
+        if((collectionName != null) && !thetaMap.isEmpty() /*|| (!Double.isNaN(thetaBuffer[0]) &&
                 !Double.isNaN(thetaBuffer[1]) && !Double.isNaN(thetaBuffer[2]) && !Double.isNaN(thetaBuffer[3]))*/ ){
             streaming(collectionName, db, state, thetaMap);
         }
+        iTemp++;
     }
 
     public void initUI(){
@@ -300,7 +312,7 @@ public class MainActivity extends AppCompatActivity {
             case THETA_ABSOLUTE:
                 assert(thetaBuffer.length >= n);
                 getEegChannelValues(thetaBuffer,p);
-                thetaStale = true;
+                //thetaStale = true;
                 break;
             case BATTERY:
                 break;
